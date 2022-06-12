@@ -1,21 +1,22 @@
 from smtplib import SMTPException
 
-from django.core.signing import BadSignature, SignatureExpired
-from django.core.exceptions import ObjectDoesNotExist
+import graphene
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import SetPasswordForm, PasswordChangeForm
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.signing import BadSignature, SignatureExpired
 from django.db import transaction
 from django.utils.module_loading import import_string
-
-import graphene
-
-from graphql_jwt.exceptions import JSONWebTokenError, JSONWebTokenExpired
 from graphql_jwt.decorators import token_auth
+from graphql_jwt.exceptions import JSONWebTokenError, JSONWebTokenExpired
 
-from .forms import RegisterForm, EmailForm, UpdateAccountForm, PasswordLessRegisterForm
 from .bases import Output
-from .models import UserStatus
-from .settings import graphql_auth_settings as app_settings
+from .constants import Messages, TokenAction
+from .decorators import (
+    password_confirmation_required,
+    verification_required,
+    secondary_email_required,
+)
 from .exceptions import (
     UserAlreadyVerified,
     UserNotVerified,
@@ -25,15 +26,12 @@ from .exceptions import (
     InvalidCredentials,
     PasswordAlreadySetError,
 )
-from .constants import Messages, TokenAction
-from .utils import revoke_user_refresh_token, get_token_payload, using_refresh_tokens
+from .forms import RegisterForm, EmailForm, UpdateAccountForm, PasswordLessRegisterForm
+from .models import UserStatus
+from .settings import graphql_auth_settings as app_settings
 from .shortcuts import get_user_by_email, get_user_to_login
 from .signals import user_registered, user_verified
-from .decorators import (
-    password_confirmation_required,
-    verification_required,
-    secondary_email_required,
-)
+from .utils import revoke_user_refresh_token, get_token_payload, using_refresh_tokens
 
 UserModel = get_user_model()
 if app_settings.EMAIL_ASYNC_TASK and isinstance(app_settings.EMAIL_ASYNC_TASK, str):
@@ -93,12 +91,12 @@ class RegisterMixin(Output):
                     UserStatus.clean_email(email)
                     user = f.save()
                     send_activation = (
-                        app_settings.SEND_ACTIVATION_EMAIL is True and email
+                            app_settings.SEND_ACTIVATION_EMAIL is True and email
                     )
                     send_password_set = (
-                        app_settings.ALLOW_PASSWORDLESS_REGISTRATION is True
-                        and app_settings.SEND_PASSWORD_SET_EMAIL is True
-                        and email
+                            app_settings.ALLOW_PASSWORDLESS_REGISTRATION is True
+                            and app_settings.SEND_PASSWORD_SET_EMAIL is True
+                            and email
                     )
                     if send_activation:
                         # TODO CHECK FOR EMAIL ASYNC SETTING
@@ -429,9 +427,10 @@ class ObtainJSONWebTokenMixin(Output):
                 raise UserNotVerified
             raise InvalidCredentials
         except (JSONWebTokenError, ObjectDoesNotExist, InvalidCredentials):
-            return cls(success=False, errors=Messages.INVALID_CREDENTIALS)
+            # adding token and refresh_token blank fields because django-graphql-jwt==0.3.4 made this fields required
+            return cls(success=False, token='', refresh_token='', errors=Messages.INVALID_CREDENTIALS)
         except UserNotVerified:
-            return cls(success=False, errors=Messages.NOT_VERIFIED)
+            return cls(success=False, token='', refresh_token='', errors=Messages.NOT_VERIFIED)
 
 
 class ArchiveOrDeleteMixin(Output):
@@ -543,7 +542,7 @@ class UpdateAccountMixin(Output):
             return cls(success=False, errors=f.errors.get_json_data())
 
 
-class VerifyOrRefreshOrRevokeTokenMixin(Output):
+class RefreshTokenMixin(Output):
     """
     Same as `grapgql_jwt` implementation, with standard output.
     """
@@ -553,9 +552,39 @@ class VerifyOrRefreshOrRevokeTokenMixin(Output):
         try:
             return cls.parent_resolve(root, info, **kwargs)
         except JSONWebTokenExpired:
-            return cls(success=False, errors=Messages.EXPIRED_TOKEN)
+            return cls(success=False, errors=Messages.EXPIRED_TOKEN, refresh_token='', payload={})
         except JSONWebTokenError:
-            return cls(success=False, errors=Messages.INVALID_TOKEN)
+            return cls(success=False, errors=Messages.INVALID_TOKEN, refresh_token='', payload={})
+
+
+class RevokeTokenMixin(Output):
+    """
+    Same as `grapgql_jwt` implementation, with standard output.
+    """
+
+    @classmethod
+    def resolve_mutation(cls, root, info, **kwargs):
+        try:
+            return cls.parent_resolve(root, info, **kwargs)
+        except JSONWebTokenExpired:
+            return cls(success=False, errors=Messages.EXPIRED_TOKEN, revoked=False)
+        except JSONWebTokenError:
+            return cls(success=False, errors=Messages.INVALID_TOKEN, revoked=False)
+
+
+class VerifyTokenMixin(Output):
+    """
+    Same as `grapgql_jwt` implementation, with standard output.
+    """
+
+    @classmethod
+    def resolve_mutation(cls, root, info, **kwargs):
+        try:
+            return cls.parent_resolve(root, info, **kwargs)
+        except JSONWebTokenExpired:
+            return cls(success=False, errors=Messages.EXPIRED_TOKEN, payload={})
+        except JSONWebTokenError:
+            return cls(success=False, errors=Messages.INVALID_TOKEN, payload={})
 
 
 class SendSecondaryEmailActivationMixin(Output):

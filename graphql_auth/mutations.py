@@ -14,19 +14,20 @@ from .mixins import (
     DeleteAccountMixin,
     PasswordChangeMixin,
     UpdateAccountMixin,
-    VerifyOrRefreshOrRevokeTokenMixin,
+    RefreshTokenMixin,
+    RevokeTokenMixin,
+    VerifyTokenMixin,
     SendSecondaryEmailActivationMixin,
     VerifySecondaryEmailMixin,
     SwapEmailsMixin,
     RemoveSecondaryEmailMixin,
 )
-from .utils import normalize_fields
-from .settings import graphql_auth_settings as app_settings
 from .schema import UserNode
+from .settings import graphql_auth_settings as app_settings
+from .utils import normalize_fields
 
 
 class Register(MutationMixin, DynamicArgsMixin, RegisterMixin, graphene.Mutation):
-
     __doc__ = RegisterMixin.__doc__
 
     password_fields = (
@@ -145,15 +146,15 @@ class UpdateAccount(
     _args = app_settings.UPDATE_MUTATION_FIELDS
 
 
-class VerifyToken(MutationMixin, VerifyOrRefreshOrRevokeTokenMixin, graphql_jwt.Verify):
-    __doc__ = VerifyOrRefreshOrRevokeTokenMixin.__doc__
+class VerifyToken(MutationMixin, VerifyTokenMixin, graphql_jwt.Verify):
+    __doc__ = VerifyTokenMixin.__doc__
 
 
 class RefreshToken(
-    MutationMixin, VerifyOrRefreshOrRevokeTokenMixin, graphql_jwt.Refresh
+    MutationMixin, RefreshTokenMixin, graphql_jwt.Refresh
 ):
-    __doc__ = VerifyOrRefreshOrRevokeTokenMixin.__doc__
+    __doc__ = RefreshTokenMixin.__doc__
 
 
-class RevokeToken(MutationMixin, VerifyOrRefreshOrRevokeTokenMixin, graphql_jwt.Revoke):
-    __doc__ = VerifyOrRefreshOrRevokeTokenMixin.__doc__
+class RevokeToken(MutationMixin, RevokeTokenMixin, graphql_jwt.Revoke):
+    __doc__ = RevokeTokenMixin.__doc__

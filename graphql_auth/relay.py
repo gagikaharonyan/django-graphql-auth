@@ -14,21 +14,22 @@ from .mixins import (
     DeleteAccountMixin,
     PasswordChangeMixin,
     UpdateAccountMixin,
-    VerifyOrRefreshOrRevokeTokenMixin,
+    RefreshTokenMixin,
+    RevokeTokenMixin,
+    VerifyTokenMixin,
     SendSecondaryEmailActivationMixin,
     VerifySecondaryEmailMixin,
     SwapEmailsMixin,
-    RemoveSecondaryEmailMixin,
+    RemoveSecondaryEmailMixin
 )
-from .utils import normalize_fields
-from .settings import graphql_auth_settings as app_settings
 from .schema import UserNode
+from .settings import graphql_auth_settings as app_settings
+from .utils import normalize_fields
 
 
 class Register(
     RelayMutationMixin, DynamicInputMixin, RegisterMixin, graphene.ClientIDMutation
 ):
-
     __doc__ = RegisterMixin.__doc__
 
     password_fields = (
@@ -175,27 +176,27 @@ class UpdateAccount(
 
 
 class VerifyToken(
-    RelayMutationMixin, VerifyOrRefreshOrRevokeTokenMixin, graphql_jwt.relay.Verify
+    RelayMutationMixin, VerifyTokenMixin, graphql_jwt.relay.Verify
 ):
-    __doc__ = VerifyOrRefreshOrRevokeTokenMixin.__doc__
+    __doc__ = VerifyTokenMixin.__doc__
 
     class Input:
         token = graphene.String(required=True)
 
 
 class RefreshToken(
-    RelayMutationMixin, VerifyOrRefreshOrRevokeTokenMixin, graphql_jwt.relay.Refresh
+    RelayMutationMixin, RefreshTokenMixin, graphql_jwt.relay.Refresh
 ):
-    __doc__ = VerifyOrRefreshOrRevokeTokenMixin.__doc__
+    __doc__ = RefreshTokenMixin.__doc__
 
     class Input(graphql_jwt.mixins.RefreshMixin.Fields):
         """Refresh Input"""
 
 
 class RevokeToken(
-    RelayMutationMixin, VerifyOrRefreshOrRevokeTokenMixin, graphql_jwt.relay.Revoke
+    RelayMutationMixin, RevokeTokenMixin, graphql_jwt.relay.Revoke
 ):
-    __doc__ = VerifyOrRefreshOrRevokeTokenMixin.__doc__
+    __doc__ = RevokeTokenMixin.__doc__
 
     class Input:
         refresh_token = graphene.String(required=True)

@@ -1,8 +1,8 @@
-from django.contrib.auth import get_user_model
 from pytest import mark
+
+from graphql_auth.constants import Messages
 from .decorators import skipif_django_21
 from .testCases import RelayTestCase, DefaultTestCase
-from graphql_auth.constants import Messages
 
 
 class LoginTestCaseMixin:
@@ -18,6 +18,9 @@ class LoginTestCaseMixin:
             username="foo",
             verified=True,
             secondary_email="secondary@email.com",
+        )
+        self.blocked_user = self.register_user(
+            email="gaa_blocked@email.com", username="gaa_blocked", blocked=True,
         )
 
     def test_archived_user_becomes_active_on_login(self):
@@ -77,6 +80,13 @@ class LoginTestCaseMixin:
         self.assertTrue(executed["errors"])
         self.assertFalse(executed["token"])
         self.assertFalse(executed["refreshToken"])
+
+    def test_login_blocked_user(self):
+        query = self.get_query("username", self.blocked_user.username)
+        executed = self.make_request(query)
+        self.assertFalse(executed["success"])
+        self.assertTrue(executed["errors"])
+        self.assertEqual(executed["errors"]["nonFieldErrors"], Messages.BLOCKED)
 
     @mark.settings_b
     @skipif_django_21()

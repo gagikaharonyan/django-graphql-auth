@@ -20,7 +20,8 @@ from .mixins import (
     SendSecondaryEmailActivationMixin,
     VerifySecondaryEmailMixin,
     SwapEmailsMixin,
-    RemoveSecondaryEmailMixin
+    RemoveSecondaryEmailMixin,
+    BlockUserMixin
 )
 from .schema import UserNode
 from .settings import graphql_auth_settings as app_settings
@@ -200,3 +201,13 @@ class RevokeToken(
 
     class Input:
         refresh_token = graphene.String(required=True)
+
+
+class BlockUser(
+    RelayMutationMixin, BlockUserMixin, graphene.ClientIDMutation
+):
+    __doc__ = RevokeTokenMixin.__doc__
+
+    class Input:
+        user_id = graphene.ID(required=True)
+        unblocking = graphene.Boolean()

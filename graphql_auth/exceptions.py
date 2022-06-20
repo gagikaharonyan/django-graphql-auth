@@ -23,6 +23,10 @@ class UserNotVerified(GraphQLAuthError):
     default_message = _("User is not verified.")
 
 
+class UserBlocked(GraphQLAuthError):
+    default_message = _("User is blocked.")
+
+
 class EmailAlreadyInUse(GraphQLAuthError):
     default_message = _("This email is already in use.")
 

@@ -1,14 +1,15 @@
-from django.contrib.auth import get_user_model
-
-from .testCases import RelayTestCase, DefaultTestCase
 from graphql_auth.constants import Messages
-from graphql_auth.utils import get_token, get_token_payload
+from graphql_auth.utils import get_token
+from .testCases import RelayTestCase, DefaultTestCase
 
 
 class PasswordResetTestCaseMixin:
     def setUp(self):
         self.user1 = self.register_user(
             email="gaa@email.com", username="gaa", verified=True, archived=False
+        )
+        self.user_blocked = self.register_user(
+            email="gaablocked@email.com", username="gaablocked", verified=True, blocked=True
         )
         self.user1_old_pass = self.user1.password
 
@@ -69,6 +70,31 @@ class PasswordResetTestCaseMixin:
         self.assertFalse(self.user1_old_pass == self.user1.password)
         self.assertTrue(self.user1.status.verified)
 
+    def test_setting_same_password(self):
+        """
+        set same password
+        """
+        token = get_token(self.user1, "password_reset")
+        executed = self.make_request(self.get_query(token=token,
+                                                    new_password1=self.default_password,
+                                                    new_password2=self.default_password), )
+
+        self.assertEqual(executed["success"], False)
+        self.assertEqual(executed["errors"]['nonFieldErrors'], Messages.PASSWORD_ALREADY_SET)
+        self.user1.refresh_from_db()
+        self.assertTrue(self.user1_old_pass == self.user1.password)
+
+    def test_blocked_user_password_change(self):
+        """
+        change password with blocked user
+        """
+        token = get_token(self.user_blocked, "password_reset")
+        executed = self.make_request(self.get_query(token=token))
+        self.assertEqual(executed["success"], False)
+        self.assertEqual(executed["errors"]['nonFieldErrors'], Messages.BLOCKED)
+        self.user1.refresh_from_db()
+        self.assertTrue(self.user1_old_pass == self.user1.password)
+
 
 class PasswordResetTestCase(PasswordResetTestCaseMixin, DefaultTestCase):
     def get_login_query(self):
@@ -85,7 +111,7 @@ class PasswordResetTestCase(PasswordResetTestCaseMixin, DefaultTestCase):
         )
 
     def get_query(
-        self, token, new_password1="new_password", new_password2="new_password"
+            self, token, new_password1="new_password", new_password2="new_password"
     ):
         return """
         mutation {
@@ -120,7 +146,7 @@ class PasswordResetRelayTestCase(PasswordResetTestCaseMixin, RelayTestCase):
         )
 
     def get_query(
-        self, token, new_password1="new_password", new_password2="new_password"
+            self, token, new_password1="new_password", new_password2="new_password"
     ):
         return """
         mutation {

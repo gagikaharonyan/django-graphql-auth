@@ -14,6 +14,9 @@ class PasswordChangeTestCaseMixin:
         self.user = self.register_user(
             email="gaa@email.com", username="gaa", verified=True
         )
+        self.user_blocked = self.register_user(
+            email="gaablocked@email.com", username="gaablocked", verified=True, blocked=True
+        )
         self.old_pass = self.user.password
 
     def test_password_change(self):
@@ -28,6 +31,35 @@ class PasswordChangeTestCaseMixin:
         self.assertTrue(executed["refreshToken"])
         self.user.refresh_from_db()
         self.assertFalse(self.old_pass == self.user.password)
+
+    def test_setting_same_password(self):
+        """
+        set same password
+        """
+        variables = {"user": self.user}
+        executed = self.make_request(self.get_query(new_password1=self.default_password,
+                                                    new_password2=self.default_password),
+                                     variables)
+
+        self.assertEqual(executed["success"], False)
+        self.assertEqual(executed["errors"]['nonFieldErrors'], Messages.PASSWORD_ALREADY_SET)
+        self.assertFalse(executed["token"])
+        self.assertFalse(executed["refreshToken"])
+        self.user.refresh_from_db()
+        self.assertTrue(self.old_pass == self.user.password)
+
+    def test_blocked_user_password_change(self):
+        """
+        change password with blocked user
+        """
+        variables = {"user": self.user_blocked}
+        executed = self.make_request(self.get_query(), variables)
+        self.assertEqual(executed["success"], False)
+        self.assertEqual(executed["errors"]['nonFieldErrors'], Messages.BLOCKED)
+        self.assertFalse(executed["token"])
+        self.assertFalse(executed["refreshToken"])
+        self.user.refresh_from_db()
+        self.assertTrue(self.old_pass == self.user.password)
 
     def test_mismatch_passwords(self):
         """

@@ -37,6 +37,7 @@ class AuthMutation(graphene.ObjectType):
     swap_emails = mutations.SwapEmails.Field()
     remove_secondary_email = mutations.RemoveSecondaryEmail.Field()
     send_secondary_email_activation = mutations.SendSecondaryEmailActivation.Field()
+    block_user = mutations.BlockUser.Field()
 
 
 class AuthRelayMutation(graphene.ObjectType):
@@ -58,6 +59,7 @@ class AuthRelayMutation(graphene.ObjectType):
     swap_emails = relay.SwapEmails.Field()
     remove_secondary_email = relay.RemoveSecondaryEmail.Field()
     send_secondary_email_activation = relay.SendSecondaryEmailActivation.Field()
+    block_user = relay.BlockUser.Field()
 
 
 class Query(UserQuery, MeQuery, PublicUserQuery, graphene.ObjectType):

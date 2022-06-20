@@ -16,10 +16,12 @@ from .decorators import (
     password_confirmation_required,
     verification_required,
     secondary_email_required,
+    superuser_required
 )
 from .exceptions import (
     UserAlreadyVerified,
     UserNotVerified,
+    UserBlocked,
     WrongUsage,
     TokenScopeError,
     EmailAlreadyInUse,
@@ -29,7 +31,7 @@ from .exceptions import (
 from .forms import RegisterForm, EmailForm, UpdateAccountForm, PasswordLessRegisterForm
 from .models import UserStatus
 from .settings import graphql_auth_settings as app_settings
-from .shortcuts import get_user_by_email, get_user_to_login
+from .shortcuts import get_user_by_email, get_user_to_login, get_user_by_id
 from .signals import user_registered, user_verified
 from .utils import revoke_user_refresh_token, get_token_payload, using_refresh_tokens
 
@@ -221,7 +223,7 @@ class ResendActivationEmailMixin(Output):
                 return cls(success=True)
             return cls(success=False, errors=f.errors.get_json_data())
         except ObjectDoesNotExist:
-            return cls(success=True)  # even if user is not registred
+            return cls(success=True)  # even if user is not registered
         except SMTPException:
             return cls(success=False, errors=Messages.EMAIL_FAIL)
         except UserAlreadyVerified:
@@ -294,14 +296,24 @@ class PasswordResetMixin(Output):
     def resolve_mutation(cls, root, info, **kwargs):
         try:
             token = kwargs.pop("token")
+            password1 = kwargs.get('new_password1')
+
             payload = get_token_payload(
                 token,
                 TokenAction.PASSWORD_RESET,
                 app_settings.EXPIRATION_PASSWORD_RESET_TOKEN,
             )
             user = UserModel._default_manager.get(**payload)
+
+            if user.status.blocked is True:
+                raise UserBlocked
+
             f = cls.form(user, kwargs)
             if f.is_valid():
+
+                if user.check_password(password1):
+                    raise PasswordAlreadySetError
+
                 revoke_user_refresh_token(user)
                 user = f.save()
 
@@ -316,6 +328,10 @@ class PasswordResetMixin(Output):
             return cls(success=False, errors=Messages.EXPIRED_TOKEN)
         except (BadSignature, TokenScopeError):
             return cls(success=False, errors=Messages.INVALID_TOKEN)
+        except UserBlocked:
+            return cls(success=False, errors=Messages.BLOCKED)
+        except PasswordAlreadySetError:
+            return cls(success=False, errors=Messages.PASSWORD_ALREADY_SET)
 
 
 class PasswordSetMixin(Output):
@@ -415,6 +431,10 @@ class ObtainJSONWebTokenMixin(Output):
                     "password": password,
                     USERNAME_FIELD: getattr(user, USERNAME_FIELD),
                 }
+
+            if user.status.blocked is True:
+                raise UserBlocked
+
             if user.status.archived is True:  # unarchive on login
                 UserStatus.unarchive(user)
                 unarchiving = True
@@ -431,6 +451,8 @@ class ObtainJSONWebTokenMixin(Output):
             return cls(success=False, token='', refresh_token='', errors=Messages.INVALID_CREDENTIALS)
         except UserNotVerified:
             return cls(success=False, token='', refresh_token='', errors=Messages.NOT_VERIFIED)
+        except UserBlocked:
+            return cls(success=False, token='', refresh_token='', errors=Messages.BLOCKED)
 
 
 class ArchiveOrDeleteMixin(Output):
@@ -503,6 +525,14 @@ class PasswordChangeMixin(Output):
     @password_confirmation_required
     def resolve_mutation(cls, root, info, **kwargs):
         user = info.context.user
+        new_password = kwargs.get("new_password1")
+
+        if user.status.blocked is True:
+            return cls(success=False, errors=Messages.BLOCKED)
+
+        if user.check_password(new_password):
+            return cls(success=False, errors=Messages.PASSWORD_ALREADY_SET)
+
         f = cls.form(user, kwargs)
         if f.is_valid():
             revoke_user_refresh_token(user)
@@ -510,7 +540,7 @@ class PasswordChangeMixin(Output):
             payload = cls.login_on_password_change(
                 root,
                 info,
-                password=kwargs.get("new_password1"),
+                password=new_password,
                 **{user.USERNAME_FIELD: getattr(user, user.USERNAME_FIELD)}
             )
             return_value = {}
@@ -648,3 +678,35 @@ class RemoveSecondaryEmailMixin(Output):
     def resolve_mutation(cls, root, info, **kwargs):
         info.context.user.status.remove_secondary_email()
         return cls(success=True)
+
+
+class BlockUserMixin(Output):
+    """
+    Block user account.
+
+    if `unblocking=True` unblocks user if it is already blocked
+
+    Superuser required
+
+    return `unblocked=True` if user has already been blocked and `unblocking=True` has been provided
+    """
+    unblocked = graphene.Boolean(description='True if user has been unblocked')
+
+    @classmethod
+    @superuser_required
+    def resolve_mutation(cls, root, info, **kwargs):
+        user_id = kwargs.get("user_id")
+        unblocking = kwargs.get("unblocking", False)
+        user = get_user_by_id(user_id)
+
+        if unblocking:
+            if user.status.blocked:
+                UserStatus.unblock(user)
+                return cls(success=True, unblocked=True)
+            else:
+                UserStatus.block(user)
+                return cls(success=True, unblocked=False)
+
+        UserStatus.block(user)
+
+        return cls(success=True, unblocked=False)

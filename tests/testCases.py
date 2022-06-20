@@ -35,6 +35,7 @@ class TestBase(TestCase):
         password=None,
         verified=False,
         archived=False,
+        blocked=False,
         secondary_email="",
         *args,
         **kwargs
@@ -47,6 +48,7 @@ class TestBase(TestCase):
         user_status = UserStatus._default_manager.get(user=user)
         user_status.verified = verified
         user_status.archived = archived
+        user_status.blocked = blocked
         user_status.secondary_email = secondary_email
         user_status.save()
         user_status.refresh_from_db()
@@ -54,15 +56,16 @@ class TestBase(TestCase):
         return user
 
     def make_request(
-        self, query, variables={"user": AnonymousUser()}, raw=False, client=None
+        self, query, variables={"user": AnonymousUser()}, raw=False, client=None, query_variables=None
     ):
+
         request_factory = RequestFactory()
         my_request = request_factory.post("/graphql/")
 
         for key in variables:
             setattr(my_request, key, variables[key])
 
-        executed = client.execute(query, context=my_request)
+        executed = client.execute(query, context=my_request, variables=query_variables)
         if raw:
             return executed
         pattern = r"{\s*(?P<target>\w*)"

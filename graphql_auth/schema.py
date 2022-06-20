@@ -1,6 +1,5 @@
-from django.contrib.auth import get_user_model
-
 import graphene
+from django.contrib.auth import get_user_model
 from graphene_django.filter.fields import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
 
@@ -47,6 +46,6 @@ class MeQuery(graphene.ObjectType):
 
     def resolve_me(self, info):
         user = info.context.user
-        if user.is_authenticated:
+        if user.is_authenticated and user.status.blocked is not True:
             return user
         return None

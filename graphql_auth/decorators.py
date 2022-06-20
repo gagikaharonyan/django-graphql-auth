@@ -10,6 +10,21 @@ def login_required(fn):
         user = info.context.user
         if not user.is_authenticated:
             return cls(success=False, errors=Messages.UNAUTHENTICATED)
+
+        if user.status.blocked is True:
+            return cls(success=False, errors=Messages.BLOCKED)
+
+        return fn(cls, root, info, **kwargs)
+
+    return wrapper
+
+def superuser_required(fn):
+    @wraps(fn)
+    @login_required
+    def wrapper(cls, root, info, **kwargs):
+        user = info.context.user
+        if not user.is_superuser:
+            return cls(success=False, errors=Messages.UNAUTHENTICATED)
         return fn(cls, root, info, **kwargs)
 
     return wrapper

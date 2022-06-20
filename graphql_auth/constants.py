@@ -19,6 +19,9 @@ class Messages:
     NOT_VERIFIED = [
         {"message": _("Please verify your account."), "code": "not_verified"}
     ]
+    BLOCKED = [
+        {"message": _("Account is blocked."), "code": "blocked_user"}
+    ]
     NOT_VERIFIED_PASSWORD_RESET = [
         {
             "message": _("Verify your account. A new verification email was sent."),

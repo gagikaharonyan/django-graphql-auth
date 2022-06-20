@@ -79,7 +79,6 @@ class UpdateAccountTestCaseMixin:
         variables = {"user": self.user3}
         executed = self.make_request(mutation, variables)
         self.assertEqual(executed["success"], False)
-        print(executed)
         self.assertTrue(executed["errors"]["nonFieldErrors"])
 
 

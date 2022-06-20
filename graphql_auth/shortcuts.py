@@ -4,7 +4,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from .models import UserStatus
 from .settings import graphql_auth_settings as app_settings
 
-
 UserModel = get_user_model()
 
 
@@ -37,3 +36,7 @@ def get_user_to_login(**kwargs):
                 status = UserStatus._default_manager.get(secondary_email=email)
                 return status.user
         raise ObjectDoesNotExist
+
+
+def get_user_by_id(user_id):
+    return UserModel._default_manager.get(id=user_id)

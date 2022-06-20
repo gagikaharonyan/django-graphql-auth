@@ -14,6 +14,9 @@ class QueryTestCase(DefaultTestCase):
         self.user3 = self.register_user(
             email="gaa@email.com", username="gaa", verified=True, archived=True
         )
+        self.user_blocked = self.register_user(
+            email="gaablocked@email.com", username="gaablocked", verified=True, blocked=True
+        )
 
     def test_query(self):
         query = """
@@ -95,3 +98,14 @@ class QueryTestCase(DefaultTestCase):
         """
         executed = self.make_request(query, variables={"user": self.user1})
         self.assertEqual(executed, {"verified": False})
+
+    def test_me_blocked(self):
+        query = """
+        query {
+            me {
+                username
+            }
+        }
+        """
+        executed = self.make_request(query, variables={"user": self.user_blocked})
+        self.assertIsNone(executed)

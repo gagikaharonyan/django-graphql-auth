@@ -35,6 +35,8 @@ class UserStatus(models.Model):
     archived = models.BooleanField(default=False)
     secondary_email = models.EmailField(blank=True, null=True)
 
+    blocked = models.BooleanField(default=False)
+
     def __str__(self):
         return "%s - status" % (self.user)
 
@@ -179,6 +181,20 @@ class UserStatus(models.Model):
         if user_status.archived is False:
             user_status.archived = True
             user_status.save(update_fields=["archived"])
+
+    @classmethod
+    def block(cls, user):
+        user_status = cls.objects.get(user=user)
+        if user_status.blocked is False:
+            user_status.blocked = True
+            user_status.save(update_fields=["blocked"])
+
+    @classmethod
+    def unblock(cls, user):
+        user_status = cls.objects.get(user=user)
+        if user_status.blocked is True:
+            user_status.blocked = False
+            user_status.save(update_fields=["blocked"])
 
     def swap_emails(self):
         if not self.secondary_email:

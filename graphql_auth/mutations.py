@@ -21,6 +21,7 @@ from .mixins import (
     VerifySecondaryEmailMixin,
     SwapEmailsMixin,
     RemoveSecondaryEmailMixin,
+    BlockUserMixin
 )
 from .schema import UserNode
 from .settings import graphql_auth_settings as app_settings
@@ -158,3 +159,13 @@ class RefreshToken(
 
 class RevokeToken(MutationMixin, RevokeTokenMixin, graphql_jwt.Revoke):
     __doc__ = RevokeTokenMixin.__doc__
+
+
+class BlockUser(MutationMixin, DynamicArgsMixin, BlockUserMixin, graphene.Mutation):
+    __doc__ = SwapEmailsMixin.__doc__
+    _args = {
+        "unblocking": "Boolean"
+    }
+    _required_args = {
+        "user_id": "ID",
+    }

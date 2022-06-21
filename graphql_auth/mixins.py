@@ -432,19 +432,21 @@ class ObtainJSONWebTokenMixin(Output):
                     USERNAME_FIELD: getattr(user, USERNAME_FIELD),
                 }
 
-            if user.status.blocked is True:
-                raise UserBlocked
-
             if user.status.archived is True:  # unarchive on login
                 UserStatus.unarchive(user)
                 unarchiving = True
 
-            if user.status.verified or app_settings.ALLOW_LOGIN_NOT_VERIFIED:
+            if (user.status.verified or app_settings.ALLOW_LOGIN_NOT_VERIFIED) and user.status.blocked is False:
                 return cls.parent_resolve(
                     root, info, unarchiving=unarchiving, **next_kwargs
                 )
+
             if user.check_password(password):
-                raise UserNotVerified
+                if app_settings.ALLOW_LOGIN_NOT_VERIFIED is False and user.status.verified is False:
+                    raise UserNotVerified
+                if user.status.blocked is True:
+                    raise UserBlocked
+
             raise InvalidCredentials
         except (JSONWebTokenError, ObjectDoesNotExist, InvalidCredentials):
             # adding token and refresh_token blank fields because django-graphql-jwt==0.3.4 made this fields required

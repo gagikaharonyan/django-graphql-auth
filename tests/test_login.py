@@ -20,7 +20,7 @@ class LoginTestCaseMixin:
             secondary_email="secondary@email.com",
         )
         self.blocked_user = self.register_user(
-            email="gaa_blocked@email.com", username="gaa_blocked", blocked=True,
+            email="gaa_blocked@email.com", username="gaa_blocked", blocked=True, verified=True
         )
 
     def test_archived_user_becomes_active_on_login(self):
@@ -87,6 +87,13 @@ class LoginTestCaseMixin:
         self.assertFalse(executed["success"])
         self.assertTrue(executed["errors"])
         self.assertEqual(executed["errors"]["nonFieldErrors"], Messages.BLOCKED)
+
+    def test_login_blocked_user_with_wrong_password(self):
+        query = self.get_query("username",  self.blocked_user.username, "wrongpass")
+        executed = self.make_request(query)
+        self.assertFalse(executed["success"])
+        self.assertTrue(executed["errors"])
+        self.assertEqual(executed["errors"]["nonFieldErrors"], Messages.INVALID_CREDENTIALS)
 
     @mark.settings_b
     @skipif_django_21()

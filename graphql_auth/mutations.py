@@ -162,10 +162,10 @@ class RevokeToken(MutationMixin, RevokeTokenMixin, graphql_jwt.Revoke):
 
 
 class BlockUser(MutationMixin, DynamicArgsMixin, BlockUserMixin, graphene.Mutation):
-    __doc__ = SwapEmailsMixin.__doc__
+    __doc__ = BlockUserMixin.__doc__
     _args = {
         "unblocking": "Boolean"
     }
     _required_args = {
-        "user_id": "ID",
+        "user_id": "Int",
     }

@@ -206,8 +206,8 @@ class RevokeToken(
 class BlockUser(
     RelayMutationMixin, BlockUserMixin, graphene.ClientIDMutation
 ):
-    __doc__ = RevokeTokenMixin.__doc__
+    __doc__ = BlockUserMixin.__doc__
 
     class Input:
-        user_id = graphene.ID(required=True)
+        user_id = graphene.Int(required=True)
         unblocking = graphene.Boolean()

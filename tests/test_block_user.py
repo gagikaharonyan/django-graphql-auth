@@ -54,7 +54,7 @@ class BlockUserTestCaseMixin:
 class BlockUserTestCase(BlockUserTestCaseMixin, DefaultTestCase):
     def get_query(self):
         return """
-        mutation BlockUser($user_id: ID!, $unblocking: Boolean) {
+        mutation BlockUser($user_id: Int!, $unblocking: Boolean) {
             blockUser(userId: $user_id, unblocking: $unblocking)
                 { success, errors, unblocked  }
         }
@@ -64,7 +64,7 @@ class BlockUserTestCase(BlockUserTestCaseMixin, DefaultTestCase):
 class BlockUserRelayTestCase(BlockUserTestCaseMixin, RelayTestCase):
     def get_query(self, ):
         return """
-        mutation BlockUser($user_id: ID!, $unblocking: Boolean) {
+        mutation BlockUser($user_id: Int!, $unblocking: Boolean) {
             blockUser(input:{ userId: $user_id, unblocking: $unblocking })
                 { success, errors, unblocked }
         }

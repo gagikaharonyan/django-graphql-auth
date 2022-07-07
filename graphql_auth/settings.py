@@ -77,6 +77,10 @@ DEFAULTS = {
     # registration with no password
     "ALLOW_PASSWORDLESS_REGISTRATION": False,
     "SEND_PASSWORD_SET_EMAIL": False,
+    # google recaptcha
+    "LOGIN_REQUIRE_RECAPTCHA": False,
+    "RECAPTCHA_SECRET_KET": None,
+    "RECAPTCHA_MIN_SCORE": None,
 }
 
 

@@ -135,6 +135,12 @@ class ObtainJSONWebToken(
         cls._meta.arguments["input"]._meta.fields.update(
             {"password": graphene.InputField(graphene.String, required=True)}
         )
+
+        if app_settings.LOGIN_REQUIRE_RECAPTCHA is True:
+            cls._meta.arguments["input"]._meta.fields.update(
+                {"recaptcha_token": graphene.InputField(graphene.String, required=True)}
+            )
+
         for field in app_settings.LOGIN_ALLOWED_FIELDS:
             cls._meta.arguments["input"]._meta.fields.update(
                 {field: graphene.InputField(graphene.String)}

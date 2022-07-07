@@ -10,6 +10,7 @@ from django.utils.module_loading import import_string
 from graphql_jwt.decorators import token_auth
 from graphql_jwt.exceptions import JSONWebTokenError, JSONWebTokenExpired
 
+from graphql_auth import providers
 from .bases import Output
 from .constants import Messages, TokenAction
 from .decorators import (
@@ -27,6 +28,7 @@ from .exceptions import (
     EmailAlreadyInUse,
     InvalidCredentials,
     PasswordAlreadySetError,
+    RecaptchaFailedError
 )
 from .forms import RegisterForm, EmailForm, UpdateAccountForm, PasswordLessRegisterForm
 from .models import UserStatus
@@ -403,7 +405,7 @@ class ObtainJSONWebTokenMixin(Output):
 
     @classmethod
     def resolve_mutation(cls, root, info, **kwargs):
-        if len(kwargs.items()) != 2:
+        if not any(field in kwargs for field in app_settings.LOGIN_ALLOWED_FIELDS):
             raise WrongUsage(
                 "Must login with password and one of the following fields %s."
                 % (app_settings.LOGIN_ALLOWED_FIELDS)
@@ -425,6 +427,20 @@ class ObtainJSONWebTokenMixin(Output):
                 query_kwargs = {query_field: query_value}
 
             user = get_user_to_login(**query_kwargs)
+
+            if app_settings.LOGIN_REQUIRE_RECAPTCHA is True:
+                recaptcha_token = kwargs.get('recaptcha_token')
+
+                res = providers.validate_recaptcha(recaptcha_token)
+
+                if res.get('success', False) is False:
+                    raise RecaptchaFailedError
+                if app_settings.RECAPTCHA_MIN_SCORE is None:
+                    raise WrongUsage(
+                        "RECAPTCHA_MIN_SCORE must be provided while using LOGIN_REQUIRE_RECAPTCHA"
+                    )
+                if res.get('score', 0) < app_settings.RECAPTCHA_MIN_SCORE:
+                    raise RecaptchaFailedError
 
             if not next_kwargs:
                 next_kwargs = {
@@ -455,6 +471,8 @@ class ObtainJSONWebTokenMixin(Output):
             return cls(success=False, token='', refresh_token='', errors=Messages.NOT_VERIFIED)
         except UserBlocked:
             return cls(success=False, token='', refresh_token='', errors=Messages.BLOCKED)
+        except RecaptchaFailedError:
+            return cls(success=False, token='', refresh_token='', errors=Messages.RECAPTCHA_FAILED)
 
 
 class ArchiveOrDeleteMixin(Output):

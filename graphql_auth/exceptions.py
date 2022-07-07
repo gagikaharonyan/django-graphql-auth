@@ -39,6 +39,10 @@ class PasswordAlreadySetError(GraphQLAuthError):
     default_message = _("Password already set for account.")
 
 
+class RecaptchaFailedError(GraphQLAuthError):
+    default_message = _("Failed validation of recaptcha token")
+
+
 class WrongUsage(GraphQLAuthError):
     """
     internal exception

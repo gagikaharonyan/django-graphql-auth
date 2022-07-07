@@ -114,6 +114,11 @@ class ObtainJSONWebToken(
     @classmethod
     def Field(cls, *args, **kwargs):
         cls._meta.arguments.update({"password": graphene.String(required=True)})
+
+        if app_settings.LOGIN_REQUIRE_RECAPTCHA is True:
+            cls._meta.arguments.update(
+                {"recaptcha_token": graphene.String(required=True)}
+            )
         for field in app_settings.LOGIN_ALLOWED_FIELDS:
             cls._meta.arguments.update({field: graphene.String()})
         return super(graphql_jwt.JSONWebTokenMutation, cls).Field(*args, **kwargs)

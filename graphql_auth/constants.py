@@ -43,6 +43,12 @@ class Messages:
             "code": "password_already_set",
         }
     ]
+    RECAPTCHA_FAILED = [
+        {
+            "message": _("Failed validation of recaptcha token"),
+            "code": "recaptcha_failed",
+        }
+    ]
 
 
 class TokenAction(object):

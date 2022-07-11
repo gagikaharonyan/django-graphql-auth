@@ -1,24 +1,23 @@
 import time
-from django.db import models
+
 from django.conf import settings as django_settings
+from django.contrib.auth import get_user_model
+from django.contrib.sites.shortcuts import get_current_site
+from django.core.mail import send_mail
+from django.db import models
+from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from django.core.mail import send_mail
-from django.contrib.sites.shortcuts import get_current_site
-from django.contrib.auth import get_user_model
-from django.db import transaction
 
-
-from .settings import graphql_auth_settings as app_settings
 from .constants import TokenAction
-from .utils import get_token, get_token_payload
 from .exceptions import (
     UserAlreadyVerified,
-    UserNotVerified,
     EmailAlreadyInUse,
     WrongUsage,
 )
+from .settings import graphql_auth_settings as app_settings
 from .signals import user_verified
+from .utils import get_token, get_token_payload
 
 UserModel = get_user_model()
 
@@ -51,7 +50,7 @@ class UserStatus(models.Model):
             message=message,
             html_message=html_message,
             recipient_list=(
-                recipient_list or [getattr(self.user, UserModel.EMAIL_FIELD)]
+                    recipient_list or [getattr(self.user, UserModel.EMAIL_FIELD)]
             ),
             fail_silently=False,
         )
@@ -122,7 +121,7 @@ class UserStatus(models.Model):
     @classmethod
     def email_is_free(cls, email):
         try:
-            UserModel._default_manager.get(**{UserModel.EMAIL_FIELD: email})
+            UserModel._default_manager.get(**{UserModel.EMAIL_FIELD + '__iexact': email})
             return False
         except Exception:
             pass

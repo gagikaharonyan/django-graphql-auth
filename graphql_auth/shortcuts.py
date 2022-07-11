@@ -27,7 +27,14 @@ def get_user_to_login(**kwargs):
     raise ObjectDoesNotExist
     """
     try:
-        user = UserModel._default_manager.get(**kwargs)
+        # to do case-insensitive match
+        newKwargs = kwargs.copy()
+
+        key, value = newKwargs.popitem()
+        newKwargs[key + '__iexact'] = value
+
+        user = UserModel._default_manager.get(**newKwargs)
+
         return user
     except ObjectDoesNotExist:
         if app_settings.ALLOW_LOGIN_WITH_SECONDARY_EMAIL:
